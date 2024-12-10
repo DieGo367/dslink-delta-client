@@ -24,6 +24,7 @@
 #include "calico/nds/pm.h"
 #include "hbmenu_banner.h"
 #include "iconTitle.h"
+#include "nds/arm9/exceptions.h"
 #include "nds/arm9/sassert.h"
 #include "nds/interrupts.h"
 #include "nds/system.h"
@@ -301,7 +302,7 @@ int main(int argc, char **argv) {
 	pmClearResetJumpTarget();
 
 	// install exception stub
-	installExcptStub();
+	defaultExceptionHandler();
 
 	iconTitleInit();
 

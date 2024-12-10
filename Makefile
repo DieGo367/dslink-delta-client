@@ -72,7 +72,7 @@ CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 PNGFILES	:=	$(foreach dir,$(GRAPHICS),$(notdir $(wildcard $(dir)/*.png)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-BINFILES	:=	load.bin bootstub.bin exceptionstub.bin
+BINFILES	:=	load.bin bootstub.bin
 
 #---------------------------------------------------------------------------------
 # use CXX for linking C++ projects, CC for standard C
@@ -108,29 +108,12 @@ else
 	endif
 endif
 
-.PHONY: all cia dist $(BUILD) clean data bootloader exceptionstub bootstub BootStrap
+.PHONY: all $(BUILD) clean data bootloader bootstub
 
 all:	$(BUILD)
 
-cia:
-	$(MAKE) -C BootStrap bootstrap.cia
-
-dist:	$(BUILD) BootStrap
-	@rm	-fr	hbmenu
-	@mkdir -p hbmenu/nds
-	@cp hbmenu.nds hbmenu/BOOT.NDS
-	@cp BootStrap/_BOOT_MP.NDS BootStrap/TTMENU.DAT BootStrap/SCFW.SC BootStrap/_ds_menu.dat BootStrap/ez5sys.bin BootStrap/akmenu4.nds BootStrap/ismat.dat hbmenu
-	@mkdir hbmenu/ACE3DS
-	@cp BootStrap/ACE3DS/_ds_menu.dat hbmenu/ACE3DS
-	@cp BootStrap/ACE3DS/_dsmenu.dat hbmenu/ACE3DS
-ifneq (,$(wildcard BootStrap/bootstrap.cia))
-	cp "BootStrap/bootstrap.cia" hbmenu
-endif
-	cp testfiles/* hbmenu/nds
-	zip -9r hbmenu-$(VERSION).zip hbmenu README.md COPYING
-
 #---------------------------------------------------------------------------------
-$(BUILD): bootloader bootstub exceptionstub
+$(BUILD): bootloader bootstub
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
@@ -140,8 +123,6 @@ clean:
 	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).nds $(TARGET).arm9 data
 	@$(MAKE) -C bootloader clean
 	@$(MAKE) -C bootstub clean
-	@$(MAKE) -C BootStrap clean
-	@$(MAKE) -C nds-exception-stub clean
 
 data:
 	@mkdir -p data
@@ -149,14 +130,8 @@ data:
 bootloader: data
 	@$(MAKE) -C bootloader LOADBIN=$(CURDIR)/data/load.bin
 
-exceptionstub: data
-	@$(MAKE) -C nds-exception-stub STUBBIN=$(CURDIR)/data/exceptionstub.bin
-
 bootstub: data
 	@$(MAKE) -C bootstub
-
-BootStrap: bootloader
-	@$(MAKE) -C BootStrap
 
 #---------------------------------------------------------------------------------
 else
