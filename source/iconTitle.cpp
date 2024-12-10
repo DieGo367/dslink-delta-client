@@ -1,32 +1,15 @@
-/*-----------------------------------------------------------------
- Copyright (C) 2005 - 2013
-	Michael "Chishm" Chisholm
-	Dave "WinterMute" Murphy
-	Claudio "sverx"
-	Michael "mtheall" Theall
-
- This program is free software; you can redistribute it and/or
- modify it under the terms of the GNU General Public License
- as published by the Free Software Foundation; either version 2
- of the License, or (at your option) any later version.
-
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with this program; if not, write to the Free Software
- Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
-------------------------------------------------------------------*/
+// SPDX-License-Identifier: GPL-2.0-or-later
+//
+// Copyright (c) 2005 - 2013 Michael "Chishm" Chisholm
+// Copyright (c) 2005 - 2013 Dave "WinterMute" Murphy
+// Copyright (c) 2005 - 2013 Claudio "sverx"
 
 #include <nds.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <string>
 #include <sys/stat.h>
 
-#include "args.h"
 #include "hbmenu_banner.h"
 #include "font6x8.h"
 
@@ -130,9 +113,8 @@ void iconTitleInit (void) {
 
 	// everything's ready :)
 	writeRow (0,"...initializing...");
-	writeRow (1,"===>>> HBMenu+ <<<===");
-	writeRow (2,"(this text should disappear...");
-	writeRow (3,"...otherwise, trouble!)");
+	writeRow (1,"===>>> sdlink <<<===");
+	writeRow (2,"(send file with 3dslink!)");
 }
 
 
@@ -148,12 +130,12 @@ void iconTitleUpdate (int isdir, const std::string& name) {
 		// icon
 		clearIcon();
 	} else {
-		std::string ndsPath;
-		if (!argsNdsPath(name, ndsPath)) {
-			writeRow(2, "(invalid argv or NDS file!)");
-			clearIcon();
-			return;
-		}
+		std::string ndsPath = name; // TODO
+		// if (!argsNdsPath(name, ndsPath)) {
+		// 	writeRow(2, "(invalid argv or NDS file!)");
+		// 	clearIcon();
+		// 	return;
+		// }
 
 		unsigned int Icon_title_offset;
 
