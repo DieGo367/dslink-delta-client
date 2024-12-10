@@ -7,6 +7,16 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
+ifneq (,$(shell which python3))
+PYTHON	:= python3
+else ifneq (,$(shell which python2))
+PYTHON	:= python2
+else ifneq (,$(shell which python))
+PYTHON	:= python
+else
+$(error "Python not found in PATH, please install it.")
+endif
+
 include $(DEVKITARM)/ds_rules
 
 #---------------------------------------------------------------------------------
@@ -135,6 +145,20 @@ bootstub: data
 
 #---------------------------------------------------------------------------------
 else
+
+#---------------------------------------------------------------------------------
+# Get version number from git
+#---------------------------------------------------------------------------------
+ifneq ($(shell echo $(shell git tag -l --points-at HEAD) | head -c 1),) # If on a tagged commit, use just tag
+GIT_VER := $(shell git tag -l --points-at HEAD)
+else # Otherwise include commit
+GIT_VER := $(shell git describe --abbrev=0 --tags)-$(shell git rev-parse --short=7 HEAD)
+endif
+
+# Print new version if changed
+ifeq (,$(findstring $(GIT_VER), $(shell cat version.h)))
+$(shell printf "#ifndef VERSION_H\n#define VERSION_H\n\n#define VER_NUMBER \"$(GIT_VER)\"\n\n#endif\n" > version.h)
+endif
 
 #---------------------------------------------------------------------------------
 # main targets
