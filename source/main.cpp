@@ -71,6 +71,7 @@ int main(int argc, char **argv) {
 		if(!ret) {
 			iprintf("!!Failed!!\n");
 			waitforA();
+			return 1;
 		}
 
 		const char *args[] {arg0};
