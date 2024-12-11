@@ -172,8 +172,8 @@ bool receive(char *filename, char *arg0) {
 
 	while(pmMainLoop()) {
 		swiWaitForVBlank();
-		iprintf("Searching... %c\r", spinner[spinPos]);
-		spinPos = (spinPos + 1) % sizeof(spinner);
+		iprintf("Searching... %c\r", spinner[spinPos >> 2]);
+		spinPos = (spinPos + 1) % (sizeof(spinner) << 2);
 
 		int len = recvfrom(sock_udp, recvbuf, sizeof(recvbuf), 0, (struct sockaddr*) &sa_udp_remote, &dummy);
 
