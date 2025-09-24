@@ -158,7 +158,10 @@ bool receive(char *filename, char *arg0) {
 	sa_tcp.sin_family = AF_INET;
 	sa_tcp.sin_port = htons(17491);
 	int sock_tcp = socket(AF_INET,SOCK_STREAM,0);
-	bind(sock_tcp,(struct sockaddr *)&sa_tcp,sizeof(sa_tcp));
+	if (bind(sock_tcp, (struct sockaddr *)&sa_tcp, sizeof(sa_tcp)) < 0) {
+		iprintf(" TCP socket error\n");
+		return false;
+	}
 	int i = 1;
 	ioctl(sock_tcp, FIONBIO, &i);
 	ioctl(sock_udp, FIONBIO, &i);
@@ -169,11 +172,12 @@ bool receive(char *filename, char *arg0) {
 	char recvbuf[256];
 	int spinPos = 0;
 	const char *spinner = "|/-\\";
+	const int spinLen = strlen(spinner);
 
 	while(pmMainLoop()) {
 		swiWaitForVBlank();
 		iprintf("Searching... %c\r", spinner[spinPos >> 2]);
-		spinPos = (spinPos + 1) % (sizeof(spinner) << 2);
+		spinPos = (spinPos + 1) % (spinLen << 2);
 
 		int len = recvfrom(sock_udp, recvbuf, sizeof(recvbuf), 0, (struct sockaddr*) &sa_udp_remote, &dummy);
 
