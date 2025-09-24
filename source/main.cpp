@@ -5,7 +5,6 @@
 // Copyright (c) 2005 - 2013 Claudio "sverx"
 // Copyright (c) 2024 Evie "Pk11"
 
-#include "hbmenu_banner.h"
 #include "iconTitle.h"
 #include "link.h"
 #include "nds/arm9/console.h"

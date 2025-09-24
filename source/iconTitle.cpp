@@ -6,7 +6,6 @@
 
 #include <nds.h>
 #include <stdio.h>
-#include <ctype.h>
 #include <string>
 #include <sys/stat.h>
 

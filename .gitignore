@@ -14,3 +14,4 @@ BootStrap/arm9/build
 data
 build
 hbmenu
+.cache/clangd
