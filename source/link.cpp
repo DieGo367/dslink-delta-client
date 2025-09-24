@@ -13,8 +13,10 @@
 #include <stdio.h>
 #include <zlib.h>
 
-#define RECV_MAGIC "3dsboot"
-#define SEND_MAGIC "boot3ds"
+#define RECV_MAGIC_3DS "3dsboot"
+#define SEND_MAGIC_3DS "boot3ds"
+#define RECV_MAGIC_DELTA "dslink-delta-host"
+#define SEND_MAGIC_DELTA "dslink-delta-client"
 #define PORT 17491
 
 #define ZLIB_CHUNK (16 * 1024)
@@ -174,6 +176,8 @@ bool receive(char *filename, char *arg0) {
 	const char *spinner = "|/-\\";
 	const int spinLen = strlen(spinner);
 
+	bool hostIsDelta = false;
+
 	while(pmMainLoop()) {
 		swiWaitForVBlank();
 		iprintf("Searching... %c\r", spinner[spinPos >> 2]);
@@ -182,10 +186,16 @@ bool receive(char *filename, char *arg0) {
 		int len = recvfrom(sock_udp, recvbuf, sizeof(recvbuf), 0, (struct sockaddr*) &sa_udp_remote, &dummy);
 
 		if(len!=-1) {
-			if(strncmp(recvbuf, RECV_MAGIC, sizeof(RECV_MAGIC) -1) == 0) {
+			if (strncmp(recvbuf, RECV_MAGIC_3DS, sizeof(RECV_MAGIC_3DS) - 1) == 0) {
 				sa_udp_remote.sin_family = AF_INET;
 				sa_udp_remote.sin_port = htons(PORT);
-				sendto(sock_udp, SEND_MAGIC, sizeof(SEND_MAGIC) - 1, 0, (struct sockaddr*) &sa_udp_remote,sizeof(sa_udp_remote));
+				sendto(sock_udp, SEND_MAGIC_3DS, sizeof(SEND_MAGIC_3DS) - 1, 0, (struct sockaddr*) &sa_udp_remote, sizeof(sa_udp_remote));
+			}
+			else if (strncmp(recvbuf, RECV_MAGIC_DELTA, sizeof(RECV_MAGIC_DELTA) -1) == 0) {
+				sa_udp_remote.sin_family = AF_INET;
+				sa_udp_remote.sin_port = htons(PORT);
+				sendto(sock_udp, SEND_MAGIC_DELTA, sizeof(SEND_MAGIC_DELTA) - 1, 0, (struct sockaddr*) &sa_udp_remote, sizeof(sa_udp_remote));
+				hostIsDelta = true;
 			}
 		}
 

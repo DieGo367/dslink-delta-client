@@ -111,9 +111,8 @@ void iconTitleInit (void) {
 	oamUpdate(&oamMain);
 
 	// everything's ready :)
-	writeRow (0,"...initializing...");
-	writeRow (1,"===>>> sdlink <<<===");
-	writeRow (2,"(send file with 3dslink!)");
+	writeRow (1,"Send file with dslink delta!");
+	writeRow (2,"(3dslink works but has no deltas)");
 }
 
 

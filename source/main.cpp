@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
 	while(pmMainLoop()) {
 		consoleClear();
 		iprintf("================================");
-		iprintf("sdlink " VER_NUMBER "\n");
+		iprintf("dslink-delta " VER_NUMBER "\n");
 
 		char filename[256];
 		char arg0[256];
