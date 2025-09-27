@@ -21,7 +21,7 @@ void waitforA(void) {
 	while (pmMainLoop()) {
 		swiWaitForVBlank();
 		scanKeys();
-		if (!(keysHeld() & KEY_A)) break;
+		if (keysHeld() & KEY_A) break;
 	}
 }
 
