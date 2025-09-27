@@ -29,8 +29,8 @@ include $(DEVKITARM)/ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	dslink
 BUILD		:=	build
-SOURCES		:=	source
-INCLUDES	:=	include
+SOURCES		:=	source xdelta
+INCLUDES	:=	include xdelta
 DATA		:=	data
 GRAPHICS	:=  gfx
 
@@ -45,8 +45,9 @@ CFLAGS	:=	-g -Wall -O2 \
 		-ffast-math \
 		$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -DARM9
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions
+CFLAGS	+=	$(INCLUDE) -DARM9 -DSIZEOF_SIZE_T=4 -DSIZEOF_UNSIGNED_LONG_LONG=8
+CXXFLAGS	:= $(CFLAGS) -std=gnu++23 -fno-rtti -fno-exceptions
+CFLAGS	+=	-std=gnu23
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=ds_arm9.specs -g -Wl,--gc-sections $(ARCH) -Wl,-Map,$(notdir $*.map)

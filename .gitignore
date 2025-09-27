@@ -2,6 +2,7 @@
 *.dat
 *.NDS
 *.nds
+*.nds.copy
 *.elf
 *.bin
 *.bz2

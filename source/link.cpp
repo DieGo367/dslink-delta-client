@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <stdio.h>
 #include <zlib.h>
+#include "xdelta3.h"
 
 #define RECV_MAGIC_3DS "3dsboot"
 #define SEND_MAGIC_3DS "boot3ds"
@@ -19,7 +20,9 @@
 #define SEND_MAGIC_DELTA "dslink-delta-client"
 #define PORT 17491
 
-#define ZLIB_CHUNK (16 * 1024)
+#define CHUNK_SIZE (16 * 1024)
+unsigned char in[CHUNK_SIZE];
+unsigned char out[CHUNK_SIZE];
 static volatile size_t filelen, filetotal;
 
 static int recvall(int sock, void* buffer, int size, int flags) {
@@ -45,9 +48,6 @@ static int recvall(int sock, void* buffer, int size, int flags) {
 }
 
 static int receiveAndDecompress(int sock, FILE* fh, size_t filesize) {
-	static unsigned char in[ZLIB_CHUNK];
-	static unsigned char out[ZLIB_CHUNK];
-
 	int ret;
 	unsigned have;
 	z_stream strm;
@@ -86,7 +86,7 @@ static int receiveAndDecompress(int sock, FILE* fh, size_t filesize) {
 
 		// run inflate() on input until output buffer not full
 		do {
-			strm.avail_out = ZLIB_CHUNK;
+			strm.avail_out = CHUNK_SIZE;
 			strm.next_out = out;
 			ret = inflate(&strm, Z_NO_FLUSH);
 
@@ -101,7 +101,7 @@ static int receiveAndDecompress(int sock, FILE* fh, size_t filesize) {
 					return ret;
 			}
 
-			have = ZLIB_CHUNK - strm.avail_out;
+			have = CHUNK_SIZE - strm.avail_out;
 
 			if(fwrite(out, 1, have, fh) != have || ferror(fh)) {
 				inflateEnd(&strm);
@@ -124,6 +124,85 @@ static int receiveAndDecompress(int sock, FILE* fh, size_t filesize) {
 	return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
 }
 
+static int receiveAndPatch(int sock, FILE *outFile, FILE *srcFile, size_t filesize) {
+	xd3_stream stream;
+	xd3_config config;
+	xd3_init_config(&config, XD3_ADLER32);
+	config.winsize = 64 * 1024;
+	if (xd3_config_stream(&stream, &config) != 0) {
+		iprintf("Error initializing xdelta stream\n");
+		return -1;
+	}
+
+	xd3_source source = {0};
+	source.name = "src";
+	source.ioh = srcFile;
+	source.blksize = CHUNK_SIZE;
+	source.curblkno = (xoff_t) -1;
+	source.curblk = NULL;
+	xd3_set_source(&stream, &source);
+
+	int retval = 0, len, chunksize = -1;
+	int status = XD3_INPUT;
+	size_t total = 0;
+
+	while (total < filesize || status != XD3_INPUT) {
+		switch (status) {
+		case XD3_INPUT:
+			len = recvall(sock, &chunksize, 4, 0);
+			if (len != 4) {
+				iprintf("chunksize\n");
+				retval = -1;
+				goto xdelta_cleanup;
+			}
+			len = recvall(sock, in, chunksize, 0);
+			if (len == 0 || len != chunksize) {
+				iprintf("closed \n");
+				retval = -1;
+				goto xdelta_cleanup;
+			}
+			xd3_avail_input(&stream, in, chunksize);
+			break;
+		case XD3_OUTPUT:
+			if (fwrite(stream.next_out, 1, stream.avail_out, outFile) != stream.avail_out) {
+				iprintf("fwrite\n");
+				retval = -1;
+				goto xdelta_cleanup;
+			}
+			total += stream.avail_out;
+			filetotal = total;
+			iprintf("Progress: %zu (%d%%)\r", total, (100 * total) / filesize);
+			xd3_consume_output(&stream);
+			break;
+		case XD3_GETSRCBLK:
+			fseek(srcFile, source.blksize * source.getblkno, SEEK_SET);
+			source.onblk = fread(out, 1, source.blksize, srcFile);
+			source.curblk = out;
+			source.curblkno = source.getblkno;
+			break;
+		case XD3_GOTHEADER:
+		case XD3_WINSTART:
+			break;
+		case XD3_WINFINISH:
+			if (total == filesize) xd3_set_flags(&stream, XD3_FLUSH | stream.flags);
+			break;
+		default:
+			iprintf("xdelta error!\n");
+			retval = status;
+			goto xdelta_cleanup;
+		}
+		status = xd3_decode_input(&stream);
+	}
+
+xdelta_cleanup:
+	if (xd3_close_stream(&stream) != 0) {
+		iprintf("Something wrong when closing stream\n");
+	}
+	xd3_free_stream(&stream);
+	
+	if (retval == 0) iprintf("Done!                           ");
+	return retval;
+}
 
 //---------------------------------------------------------------------------------
 bool receive(char *filename, char *arg0) {
@@ -202,7 +281,20 @@ bool receive(char *filename, char *arg0) {
 		sock_tcp_remote = accept(sock_tcp, (struct sockaddr *)&sa_tcp, &dummy);
 		if(sock_tcp_remote != -1) {
 			int response = 0;
-			u32 namelen, len;
+			u32 len;
+
+			bool deltaMode = false;
+			if (hostIsDelta) {
+				u8 mode;
+				len = recvall(sock_tcp_remote, &mode, sizeof(u8), 0);
+				if (len != sizeof(u8) || mode > 2) {
+					iprintf("mode %d\n", errno);
+					return false;
+				}
+				deltaMode = mode;
+			}
+
+			u32 namelen;
 // SPDX-FileNotice: Modified from the original version by the BlocksDS project.
 			len = recvall(sock_tcp_remote, &namelen, 4, 0);
 			if(len != 4 || namelen >= 256) {
@@ -226,17 +318,39 @@ bool receive(char *filename, char *arg0) {
 
 			iprintf("Receiving %s,\n          %d bytes\n", filename, filelen);
 
-			FILE *outfile = fopen(filename, "wb");
+			FILE *outfile = fopen(deltaMode ? "dslink.out" : filename, "wb");
 			if(!outfile) {
-				iprintf("Failed to open %s\n", filename);
+				iprintf("Failed to open %s\n", deltaMode ? "dslink.out" : filename);
 				response = -1;
+			}
+
+			FILE *sourceFile = NULL;
+			if (deltaMode) {
+				sourceFile = fopen(filename, "rb");
+				if (!sourceFile) {
+					iprintf("Failed to open %s\n", filename);
+					response = -1;
+				}
 			}
 
 			send(sock_tcp_remote, &response, sizeof(response), 0);
 
-			int res = receiveAndDecompress(sock_tcp_remote, outfile, filelen);
+			int res = 0;
+			if (deltaMode) res = receiveAndPatch(sock_tcp_remote, outfile, sourceFile, filelen);
+			else res = receiveAndDecompress(sock_tcp_remote, outfile, filelen);
+
 			fclose(outfile);
-			if(res != Z_OK) {
+			if (sourceFile) fclose(sourceFile);
+
+			if (deltaMode) {
+				if (res != 0) {
+					iprintf("delta patch failed %d\n", res);
+					return false;
+				}
+				remove(filename);
+				rename("dslink.out", filename);
+			}
+			else if(res != Z_OK) {
 				iprintf("decompress failed %d\n", res);
 				return false;
 			}
