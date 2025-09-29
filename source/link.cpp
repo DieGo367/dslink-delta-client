@@ -318,19 +318,20 @@ bool receive(char *filename, char *arg0) {
 
 			iprintf("Receiving %s,\n          %d bytes\n", filename, filelen);
 
-			FILE *outfile = fopen(deltaMode ? "dslink.out" : filename, "wb");
-			if(!outfile) {
-				iprintf("Failed to open %s\n", deltaMode ? "dslink.out" : filename);
-				response = -1;
-			}
-
 			FILE *sourceFile = NULL;
 			if (deltaMode) {
 				sourceFile = fopen(filename, "rb");
 				if (!sourceFile) {
 					iprintf("Failed to open %s\n", filename);
-					response = -1;
+					response = -4;
+					deltaMode = false;
 				}
+			}
+
+			FILE *outfile = fopen(deltaMode ? "dslink.out" : filename, "wb");
+			if(!outfile) {
+				iprintf("Failed to open %s\n", deltaMode ? "dslink.out" : filename);
+				response = -1;
 			}
 
 			send(sock_tcp_remote, &response, sizeof(response), 0);
