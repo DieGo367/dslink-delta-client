@@ -326,6 +326,27 @@ bool receive(char *filename, char *arg0) {
 					response = -4;
 					deltaMode = false;
 				}
+				else {
+					uint32_t hostChecksum;
+					len = recvall(sock_tcp_remote, &hostChecksum, 4, 0);
+					if (len != 4) {
+						iprintf("hostChecksum %d\n", errno);
+						return false;
+					}
+					uint32_t checksum = adler32(0, NULL, 0);
+					while (!feof(sourceFile)) {
+						size_t read = fread(in, 1, CHUNK_SIZE, sourceFile);
+						checksum = adler32(checksum, in, read);
+					}
+					fseek(sourceFile, 0, SEEK_SET);
+					if (checksum != hostChecksum) {
+						iprintf("Mismatched checksum\n");
+						response = -5;
+						deltaMode = false;
+						fclose(sourceFile);
+						sourceFile = NULL;
+					}
+				}
 			}
 
 			FILE *outfile = fopen(deltaMode ? "dslink.out" : filename, "wb");
