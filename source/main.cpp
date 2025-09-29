@@ -64,14 +64,13 @@ int main(int argc, char **argv) {
 		bool ret = receive(filename, arg0);
 
 		iprintf("================================");
-		iprintf("Running:\n- %s\n", filename);
-		iprintf("Args:\n- %s\n", arg0);
-
 		if(!ret) {
 			iprintf("!!Failed!!\n");
 			waitforA();
 			return 1;
 		}
+		iprintf("Running:\n- %s\n", filename);
+		iprintf("Args:\n- %s\n", arg0);
 
 		const char *args[] {arg0};
 
